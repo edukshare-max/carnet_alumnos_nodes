@@ -9,18 +9,18 @@ const { generateToken } = require('../middleware/auth');
  */
 router.post('/login', async (req, res) => {
   try {
-    const { email, matricula } = req.body;
+    const { correo, matricula } = req.body;
 
     // Validar que se envíen ambos campos
-    if (!email || !matricula) {
+    if (!correo || !matricula) {
       return res.status(400).json({
         success: false,
-        message: 'Email y matrícula son requeridos'
+        message: 'Correo y matrícula son requeridos'
       });
     }
 
     // Buscar usuario en SASU
-    const carnet = await findCarnetByEmailAndMatricula(email, matricula);
+    const carnet = await findCarnetByEmailAndMatricula(correo, matricula);
 
     if (!carnet) {
       return res.status(401).json({
