@@ -1,20 +1,10 @@
 {
   "name": "carnet-backend-sasu",
   "version": "1.0.0",
-  "description": "Backend Node.js para Carnet Digital UAGro con integración SASU",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
-    "dev": "nodemon index.js",
-    "build": "npm ci --only=production",
-    "render-build": "./build.sh",
-    "render-start": "./start.sh",
-    "diagnose": "node diagnose.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node index.js"
   },
-  "keywords": ["nodejs", "express", "azure", "cosmos", "sasu", "uagro"],
-  "author": "UAGro Dev Team",
-  "license": "MIT",
   "dependencies": {
     "express": "^4.18.2",
     "cors": "^2.8.5",
@@ -24,10 +14,7 @@
     "helmet": "^7.1.0",
     "express-rate-limit": "^7.1.5"
   },
-  "devDependencies": {
-    "nodemon": "^3.0.2"
-  },
   "engines": {
-    "node": ">=18.0.0"
+    "node": "18"
   }
 }
