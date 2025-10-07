@@ -7,6 +7,7 @@ require('dotenv').config();
 const authRoutes = require('./routes/auth');
 const carnetRoutes = require('./routes/carnet');
 const citasRoutes = require('./routes/citas');
+const promocionesRoutes = require('./routes/promociones');
 const { connectToCosmosDB } = require('./config/database');
 
 const app = express();
@@ -68,6 +69,7 @@ app.get('/ping', (req, res) => {
 app.use('/auth', authRoutes);
 app.use('/me', carnetRoutes);
 app.use('/me', citasRoutes);
+app.use('/promociones', promocionesRoutes);
 
 // Manejo de rutas no encontradas
 app.use('*', (req, res) => {
