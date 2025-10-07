@@ -1,0 +1,13 @@
+# Configuración de deployment para Render
+# https://render.com/docs/web-services
+
+# Variables de entorno por defecto
+NODE_ENV=production
+PORT=3000
+
+# Configuración de build
+BUILD_COMMAND=npm ci --only=production
+START_COMMAND=node index.js
+
+# Region recomendada
+REGION=ohio

@@ -6,6 +6,10 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
+    "build": "npm ci --only=production",
+    "render-build": "./build.sh",
+    "render-start": "./start.sh",
+    "diagnose": "node diagnose.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": ["nodejs", "express", "azure", "cosmos", "sasu", "uagro"],
