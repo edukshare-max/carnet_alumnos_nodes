@@ -69,7 +69,7 @@ app.get('/ping', (req, res) => {
 app.use('/auth', authRoutes);
 app.use('/me', carnetRoutes);
 app.use('/me', citasRoutes);
-app.use('/promociones', promocionesRoutes);
+app.use('/me', promocionesRoutes);  // Montado en /me para coincidir con Flutter app
 
 // Manejo de rutas no encontradas
 app.use('*', (req, res) => {

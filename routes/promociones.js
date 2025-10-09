@@ -8,10 +8,10 @@ const {
 } = require('../config/database');
 
 /**
- * GET /promociones/activas
+ * GET /me/promociones
  * Obtener promociones activas para el usuario autenticado desde Cosmos DB
  */
-router.get('/activas', authenticateToken, async (req, res) => {
+router.get('/promociones', authenticateToken, async (req, res) => {
   try {
     const { matricula } = req.user;
 
