@@ -4,6 +4,7 @@ let cosmosClient;
 let database;
 let carnetsContainer;
 let citasContainer;
+let promocionesContainer;
 
 /**
  * Inicializar conexión a Azure Cosmos DB
@@ -15,6 +16,7 @@ async function connectToCosmosDB() {
     const databaseName = process.env.COSMOS_DATABASE || 'SASU';
     const carnetsContainerName = process.env.COSMOS_CONTAINER_CARNETS || 'carnets_id';
     const citasContainerName = process.env.COSMOS_CONTAINER_CITAS || 'cita_id';
+    const promocionesContainerName = process.env.COSMOS_CONTAINER_PROMOCIONES || 'promociones_salud';
 
     if (!endpoint || !key) {
       throw new Error('COSMOS_ENDPOINT y COSMOS_KEY son requeridos en variables de entorno');
@@ -37,13 +39,16 @@ async function connectToCosmosDB() {
     // Conectar a contenedores
     carnetsContainer = database.container(carnetsContainerName);
     citasContainer = database.container(citasContainerName);
+    promocionesContainer = database.container(promocionesContainerName);
 
     // Verificar que los contenedores existen
     const { container: carnetsResponse } = await carnetsContainer.read();
     const { container: citasResponse } = await citasContainer.read();
+    const { container: promocionesResponse } = await promocionesContainer.read();
     
     console.log(`📦 Contenedor carnets: ${carnetsResponse.id}`);
     console.log(`📦 Contenedor citas: ${citasResponse.id}`);
+    console.log(`📦 Contenedor promociones: ${promocionesResponse.id}`);
 
     return true;
   } catch (error) {
@@ -121,6 +126,52 @@ async function findCitasByMatricula(matricula) {
 }
 
 /**
+ * Buscar promociones por matrícula
+ * Retorna promociones que:
+ * - Son para la matrícula específica (matricula = "15662" por ejemplo)
+ * - O son para todos (matricula es null, undefined o no existe)
+ * @param {string} matricula - Matrícula del usuario
+ * @returns {Array} - Array de promociones aplicables al usuario
+ */
+async function findPromocionesByMatricula(matricula) {
+  try {
+    const querySpec = {
+      query: `
+        SELECT * FROM c 
+        WHERE c.autorizado = true 
+        AND (c.matricula = @matricula OR NOT IS_DEFINED(c.matricula) OR c.matricula = null)
+        ORDER BY c.createdAt DESC
+      `,
+      parameters: [
+        { name: '@matricula', value: matricula }
+      ]
+    };
+
+    const { resources } = await promocionesContainer.items.query(querySpec).fetchAll();
+    return resources;
+  } catch (error) {
+    console.error('Error buscando promociones:', error);
+    throw error;
+  }
+}
+
+/**
+ * Registrar click en promoción (para estadísticas)
+ * @param {string} promocionId - ID de la promoción
+ * @param {string} matricula - Matrícula del usuario que hizo click
+ */
+async function registrarClickPromocion(promocionId, matricula) {
+  try {
+    console.log(`📊 Click registrado - Promoción: ${promocionId}, Matrícula: ${matricula}`);
+    // Aquí podrías guardar estadísticas en otro contenedor si lo necesitas
+    return { success: true };
+  } catch (error) {
+    console.error('Error registrando click:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
  * Limpiar datos del documento eliminando campos técnicos de Cosmos DB
  * @param {Object} documento - Documento de Cosmos DB
  * @returns {Object} - Documento limpio sin campos técnicos
@@ -146,10 +197,13 @@ module.exports = {
   findCarnetByEmailAndMatricula,
   findCarnetByMatricula,
   findCitasByMatricula,
+  findPromocionesByMatricula,
+  registrarClickPromocion,
   cleanCosmosDocument,
   // Exportar clientes para uso directo si es necesario
   getCosmosClient: () => cosmosClient,
   getDatabase: () => database,
   getCarnetsContainer: () => carnetsContainer,
-  getCitasContainer: () => citasContainer
+  getCitasContainer: () => citasContainer,
+  getPromocionesContainer: () => promocionesContainer
 };
