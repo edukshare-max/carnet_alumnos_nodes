@@ -139,7 +139,11 @@ async function findPromocionesByMatricula(matricula) {
       query: `
         SELECT * FROM c 
         WHERE c.autorizado = true 
-        AND (c.matricula = @matricula OR NOT IS_DEFINED(c.matricula) OR c.matricula = null)
+        AND (
+          c.destinatario = "general"
+          OR (c.destinatario = "alumno" AND c.matricula = @matricula)
+          OR (c.destinatario = "alumno" AND (NOT IS_DEFINED(c.matricula) OR c.matricula = "" OR c.matricula = null))
+        )
         ORDER BY c.createdAt DESC
       `,
       parameters: [
@@ -148,6 +152,10 @@ async function findPromocionesByMatricula(matricula) {
     };
 
     const { resources } = await promocionesContainer.items.query(querySpec).fetchAll();
+    
+    console.log(`🔍 Query ejecutada para matrícula: ${matricula}`);
+    console.log(`📊 Promociones encontradas: ${resources.length}`);
+    
     return resources;
   } catch (error) {
     console.error('Error buscando promociones:', error);
