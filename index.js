@@ -8,6 +8,7 @@ const authRoutes = require('./routes/auth');
 const carnetRoutes = require('./routes/carnet');
 const citasRoutes = require('./routes/citas');
 const promocionesRoutes = require('./routes/promociones');
+const vacunasRoutes = require('./routes/vacunas');
 const { connectToCosmosDB } = require('./config/database');
 
 const app = express();
@@ -82,6 +83,7 @@ app.use('/auth', authRoutes);
 app.use('/me', carnetRoutes);
 app.use('/me', citasRoutes);
 app.use('/me', promocionesRoutes);  // Montado en /me para coincidir con Flutter app
+app.use('/me', vacunasRoutes);  // Ruta de vacunación
 
 // Manejo de rutas no encontradas
 app.use('*', (req, res) => {
