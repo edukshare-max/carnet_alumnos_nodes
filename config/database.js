@@ -212,6 +212,20 @@ function cleanCosmosDocument(documento) {
   return cleanDoc;
 }
 
+/**
+ * Obtener un contenedor de Cosmos DB por nombre
+ * @param {string} containerName - Nombre del contenedor
+ * @returns {Container} - Instancia del contenedor de Cosmos DB
+ */
+function getCosmosContainer(containerName) {
+  if (!database) {
+    throw new Error('Base de datos no inicializada. Llama a connectToCosmosDB() primero.');
+  }
+  
+  console.log(`📦 Obteniendo contenedor: ${containerName}`);
+  return database.container(containerName);
+}
+
 module.exports = {
   connectToCosmosDB,
   findCarnetByEmailAndMatricula,
@@ -220,6 +234,7 @@ module.exports = {
   findPromocionesByMatricula,
   registrarClickPromocion,
   cleanCosmosDocument,
+  getCosmosContainer,
   // Exportar clientes para uso directo si es necesario
   getCosmosClient: () => cosmosClient,
   getDatabase: () => database,
