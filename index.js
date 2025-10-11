@@ -55,13 +55,25 @@ app.use(limiter);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Health check endpoint
+// Health check endpoints (ambos /ping y /health para compatibilidad)
 app.get('/ping', (req, res) => {
   res.json({
     success: true,
     message: 'Backend SASU online',
     timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development'
+    environment: process.env.NODE_ENV || 'development',
+    uptime: process.uptime()
+  });
+});
+
+app.get('/health', (req, res) => {
+  res.json({
+    success: true,
+    status: 'healthy',
+    message: 'Backend SASU online',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development',
+    uptime: process.uptime()
   });
 });
 
@@ -96,11 +108,42 @@ async function startServer() {
     await connectToCosmosDB();
     console.log('✅ Conexión a Azure Cosmos DB establecida');
     
-    app.listen(PORT, () => {
-      console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
+    // Configuración optimizada del servidor HTTP
+    const server = app.listen(PORT, () => {
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log(`🚀 Backend SASU - Carnet Digital UAGro`);
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log(`📡 Puerto: ${PORT}`);
       console.log(`🌍 Entorno: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`📡 Health check: http://localhost:${PORT}/ping`);
+      console.log(`🏥 Health check: http://localhost:${PORT}/health`);
+      console.log(`🏥 Health check (alt): http://localhost:${PORT}/ping`);
+      console.log(`⚡ Keep-alive: ENABLED`);
+      console.log(`⏱️  Timeout: ${server.timeout}ms`);
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     });
+    
+    // Configuraciones para mejor rendimiento y confiabilidad
+    server.keepAliveTimeout = 65000; // Mayor que el timeout de ALB/ELB (60s)
+    server.headersTimeout = 66000;   // Ligeramente mayor que keepAliveTimeout
+    server.timeout = 120000;         // Timeout general de 2 minutos
+    
+    // Manejo graceful shutdown
+    process.on('SIGTERM', () => {
+      console.log('⚠️ SIGTERM recibido. Cerrando servidor gracefully...');
+      server.close(() => {
+        console.log('✅ Servidor cerrado exitosamente');
+        process.exit(0);
+      });
+    });
+    
+    process.on('SIGINT', () => {
+      console.log('\n⚠️ SIGINT recibido. Cerrando servidor gracefully...');
+      server.close(() => {
+        console.log('✅ Servidor cerrado exitosamente');
+        process.exit(0);
+      });
+    });
+    
   } catch (error) {
     console.error('❌ Error al inicializar servidor:', error);
     process.exit(1);

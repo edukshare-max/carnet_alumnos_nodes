@@ -22,11 +22,28 @@ async function connectToCosmosDB() {
       throw new Error('COSMOS_ENDPOINT y COSMOS_KEY son requeridos en variables de entorno');
     }
 
-    // Crear cliente de Cosmos DB
+    // Crear cliente de Cosmos DB con configuración optimizada
     cosmosClient = new CosmosClient({
       endpoint,
       key,
-      userAgentSuffix: 'CarnetDigitalUAGro'
+      userAgentSuffix: 'CarnetDigitalUAGro/v2.0',
+      connectionPolicy: {
+        requestTimeout: 30000,        // Timeout de 30s por request
+        enableEndpointDiscovery: true, // Auto-descubrimiento de endpoints
+        preferredLocations: [],        // Usar región primaria
+        retryOptions: {
+          maxRetryAttemptCount: 3,     // 3 reintentos automáticos
+          fixedRetryIntervalInMilliseconds: 1000,  // 1s entre reintentos
+          maxWaitTimeInSeconds: 30     // Máximo 30s de espera total
+        }
+      },
+      // Configuración de connection pooling
+      agent: {
+        keepAlive: true,               // Mantener conexiones vivas
+        keepAliveMsecs: 60000,         // 60s de keep-alive
+        maxSockets: 100,               // Máximo 100 conexiones simultáneas
+        maxFreeSockets: 10             // Mantener 10 conexiones libres en pool
+      }
     });
 
     // Conectar a la base de datos
