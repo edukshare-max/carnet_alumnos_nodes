@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { authMiddleware } = require('../middleware/authMiddleware');
+const { authenticateToken } = require('../middleware/auth');
 const { getCosmosContainer } = require('../config/database');
 
 /**
@@ -9,7 +9,7 @@ const { getCosmosContainer } = require('../config/database');
  * @access  Private (requiere token JWT)
  * @returns {Array} Lista de vacunas aplicadas ordenadas por fecha
  */
-router.get('/me/vacunas', authMiddleware, async (req, res) => {
+router.get('/vacunas', authenticateToken, async (req, res) => {
   try {
     const { matricula } = req.user; // Extraída del token JWT por authMiddleware
 
@@ -70,7 +70,7 @@ router.get('/me/vacunas', authMiddleware, async (req, res) => {
  * @desc    Obtener estadísticas generales de vacunación (ADMIN)
  * @access  Private (admin)
  */
-router.get('/estadisticas', authMiddleware, async (req, res) => {
+router.get('/estadisticas', authenticateToken, async (req, res) => {
   try {
     // TODO: Implementar verificación de rol admin
     
