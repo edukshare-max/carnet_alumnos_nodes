@@ -36,14 +36,9 @@ async function connectToCosmosDB() {
           fixedRetryIntervalInMilliseconds: 1000,  // 1s entre reintentos
           maxWaitTimeInSeconds: 30     // Máximo 30s de espera total
         }
-      },
-      // Configuración de connection pooling
-      agent: {
-        keepAlive: true,               // Mantener conexiones vivas
-        keepAliveMsecs: 60000,         // 60s de keep-alive
-        maxSockets: 100,               // Máximo 100 conexiones simultáneas
-        maxFreeSockets: 10             // Mantener 10 conexiones libres en pool
       }
+      // NOTA: La propiedad 'agent' no es compatible con @azure/cosmos v4.x
+      // El SDK maneja automáticamente el connection pooling
     });
 
     // Conectar a la base de datos
