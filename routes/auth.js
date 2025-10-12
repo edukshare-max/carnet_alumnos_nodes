@@ -1,45 +1,155 @@
 const express = require('express');
 const router = express.Router();
-const { findCarnetByEmailAndMatricula } = require('../config/database');
+const bcrypt = require('bcryptjs');
+const { 
+  findCarnetByEmailAndMatricula, 
+  findUsuarioByMatricula,
+  findUsuarioByCorreo,
+  createUsuario 
+} = require('../config/database');
 const { generateToken } = require('../middleware/auth');
 
 /**
+ * POST /auth/register
+ * Registrar nuevo usuario con validación en base de carnets
+ */
+router.post('/register', async (req, res) => {
+  try {
+    const { correo, matricula, password } = req.body;
+
+    // Validar campos requeridos
+    if (!correo || !matricula || !password) {
+      return res.status(400).json({
+        success: false,
+        error: 'VALIDATION',
+        message: 'Correo, matrícula y contraseña son requeridos'
+      });
+    }
+
+    // Validar formato de correo
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(correo)) {
+      return res.status(400).json({
+        success: false,
+        error: 'VALIDATION',
+        message: 'Formato de correo inválido'
+      });
+    }
+
+    // Validar longitud de contraseña
+    if (password.length < 6) {
+      return res.status(400).json({
+        success: false,
+        error: 'VALIDATION',
+        message: 'La contraseña debe tener al menos 6 caracteres'
+      });
+    }
+
+    // 1. Verificar que correo + matrícula existen en base de carnets
+    const carnet = await findCarnetByEmailAndMatricula(correo, matricula);
+    
+    if (!carnet) {
+      return res.status(404).json({
+        success: false,
+        error: 'NOT_FOUND',
+        message: 'El correo y matrícula no coinciden con ningún carnet registrado'
+      });
+    }
+
+    // 2. Verificar que no exista ya un usuario con esa matrícula
+    const usuarioExistente = await findUsuarioByMatricula(matricula);
+    
+    if (usuarioExistente) {
+      return res.status(409).json({
+        success: false,
+        error: 'ALREADY_EXISTS',
+        message: 'Ya existe una cuenta con esta matrícula'
+      });
+    }
+
+    // 3. Hash de la contraseña
+    const saltRounds = 10;
+    const passwordHash = await bcrypt.hash(password, saltRounds);
+
+    // 4. Crear usuario
+    const nuevoUsuario = await createUsuario({
+      correo,
+      matricula,
+      passwordHash
+    });
+
+    // 5. Generar token JWT
+    const token = generateToken(matricula);
+
+    console.log(`✅ Usuario registrado exitosamente: ${matricula}`);
+
+    // 6. Respuesta exitosa
+    res.status(201).json({
+      success: true,
+      token,
+      matricula,
+      message: 'Usuario registrado exitosamente'
+    });
+
+  } catch (error) {
+    console.error('❌ Error en registro:', error);
+    res.status(500).json({
+      success: false,
+      error: 'SERVER',
+      message: 'Error interno del servidor'
+    });
+  }
+});
+
+/**
  * POST /auth/login
- * Autenticar usuario con correo y matrícula
+ * Autenticar usuario con matrícula y contraseña
  */
 router.post('/login', async (req, res) => {
   try {
-    const { correo, matricula } = req.body;
+    const { matricula, password } = req.body;
 
-    // Validar que se envíen ambos campos
-    if (!correo || !matricula) {
+    // Validar campos requeridos
+    if (!matricula || !password) {
       return res.status(400).json({
         success: false,
-        message: 'Correo y matrícula son requeridos'
+        error: 'VALIDATION',
+        message: 'Matrícula y contraseña son requeridos'
       });
     }
 
-    // Buscar usuario en SASU
-    const carnet = await findCarnetByEmailAndMatricula(correo, matricula);
+    // 1. Buscar usuario por matrícula
+    const usuario = await findUsuarioByMatricula(matricula);
 
-    if (!carnet) {
+    if (!usuario) {
       return res.status(401).json({
         success: false,
-        message: 'Credenciales incorrectas'
+        error: 'CREDENTIALS_ERROR',
+        message: 'Matrícula o contraseña incorrectos'
       });
     }
 
-    // Generar JWT token
-    const token = generateToken(carnet.matricula);
+    // 2. Verificar contraseña
+    const passwordValido = await bcrypt.compare(password, usuario.passwordHash);
 
-    // Log exitoso (sin datos sensibles)
-    console.log(`✅ Login exitoso para matrícula: ${carnet.matricula}`);
+    if (!passwordValido) {
+      return res.status(401).json({
+        success: false,
+        error: 'CREDENTIALS_ERROR',
+        message: 'Matrícula o contraseña incorrectos'
+      });
+    }
 
-    // Respuesta exitosa
+    // 3. Generar JWT token
+    const token = generateToken(usuario.matricula);
+
+    console.log(`✅ Login exitoso para matrícula: ${usuario.matricula}`);
+
+    // 4. Respuesta exitosa
     res.json({
       success: true,
-      token: token,
-      matricula: carnet.matricula,
+      token,
+      matricula: usuario.matricula,
       message: 'Login exitoso'
     });
 
@@ -47,6 +157,7 @@ router.post('/login', async (req, res) => {
     console.error('❌ Error en login:', error);
     res.status(500).json({
       success: false,
+      error: 'SERVER',
       message: 'Error interno del servidor'
     });
   }

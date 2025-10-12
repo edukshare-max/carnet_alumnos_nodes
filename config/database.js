@@ -5,6 +5,7 @@ let database;
 let carnetsContainer;
 let citasContainer;
 let promocionesContainer;
+let usuariosContainer;
 
 /**
  * Inicializar conexión a Azure Cosmos DB
@@ -17,6 +18,7 @@ async function connectToCosmosDB() {
     const carnetsContainerName = process.env.COSMOS_CONTAINER_CARNETS || 'carnets_id';
     const citasContainerName = process.env.COSMOS_CONTAINER_CITAS || 'cita_id';
     const promocionesContainerName = process.env.COSMOS_CONTAINER_PROMOCIONES || 'promociones_salud';
+    const usuariosContainerName = process.env.COSMOS_CONTAINER_USUARIOS || 'usuarios';
 
     if (!endpoint || !key) {
       throw new Error('COSMOS_ENDPOINT y COSMOS_KEY son requeridos en variables de entorno');
@@ -52,6 +54,7 @@ async function connectToCosmosDB() {
     carnetsContainer = database.container(carnetsContainerName);
     citasContainer = database.container(citasContainerName);
     promocionesContainer = database.container(promocionesContainerName);
+    usuariosContainer = database.container(usuariosContainerName);
 
     // Verificar que los contenedores existen
     const { container: carnetsResponse } = await carnetsContainer.read();
@@ -61,6 +64,18 @@ async function connectToCosmosDB() {
     console.log(`📦 Contenedor carnets: ${carnetsResponse.id}`);
     console.log(`📦 Contenedor citas: ${citasResponse.id}`);
     console.log(`📦 Contenedor promociones: ${promocionesResponse.id}`);
+    
+    // Intentar conectar al contenedor de usuarios (crear si no existe)
+    try {
+      const { container: usuariosResponse } = await usuariosContainer.read();
+      console.log(`📦 Contenedor usuarios: ${usuariosResponse.id}`);
+    } catch (error) {
+      if (error.code === 404) {
+        console.log(`⚠️ Contenedor usuarios no existe. Se necesita crear manualmente en Azure Portal.`);
+      } else {
+        throw error;
+      }
+    }
 
     return true;
   } catch (error) {
@@ -226,6 +241,87 @@ function getCosmosContainer(containerName) {
   return database.container(containerName);
 }
 
+/**
+ * Buscar usuario por matrícula
+ * @param {string} matricula - Matrícula del usuario
+ * @returns {Object|null} - Documento del usuario o null si no existe
+ */
+async function findUsuarioByMatricula(matricula) {
+  try {
+    if (!usuariosContainer) {
+      throw new Error('Contenedor de usuarios no inicializado');
+    }
+
+    const querySpec = {
+      query: 'SELECT * FROM c WHERE c.matricula = @matricula',
+      parameters: [
+        { name: '@matricula', value: matricula }
+      ]
+    };
+
+    const { resources } = await usuariosContainer.items.query(querySpec).fetchAll();
+    return resources.length > 0 ? resources[0] : null;
+  } catch (error) {
+    console.error('Error buscando usuario por matrícula:', error);
+    throw error;
+  }
+}
+
+/**
+ * Buscar usuario por correo
+ * @param {string} correo - Correo del usuario
+ * @returns {Object|null} - Documento del usuario o null si no existe
+ */
+async function findUsuarioByCorreo(correo) {
+  try {
+    if (!usuariosContainer) {
+      throw new Error('Contenedor de usuarios no inicializado');
+    }
+
+    const querySpec = {
+      query: 'SELECT * FROM c WHERE c.correo = @correo',
+      parameters: [
+        { name: '@correo', value: correo }
+      ]
+    };
+
+    const { resources } = await usuariosContainer.items.query(querySpec).fetchAll();
+    return resources.length > 0 ? resources[0] : null;
+  } catch (error) {
+    console.error('Error buscando usuario por correo:', error);
+    throw error;
+  }
+}
+
+/**
+ * Crear nuevo usuario
+ * @param {Object} userData - Datos del usuario (correo, matricula, passwordHash)
+ * @returns {Object} - Usuario creado
+ */
+async function createUsuario(userData) {
+  try {
+    if (!usuariosContainer) {
+      throw new Error('Contenedor de usuarios no inicializado');
+    }
+
+    const nuevoUsuario = {
+      id: userData.matricula, // Usar matrícula como ID
+      correo: userData.correo,
+      matricula: userData.matricula,
+      passwordHash: userData.passwordHash,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    const { resource } = await usuariosContainer.items.create(nuevoUsuario);
+    console.log(`✅ Usuario creado: ${resource.matricula}`);
+    return cleanCosmosDocument(resource);
+  } catch (error) {
+    console.error('Error creando usuario:', error);
+    throw error;
+  }
+}
+
 module.exports = {
   connectToCosmosDB,
   findCarnetByEmailAndMatricula,
@@ -235,10 +331,15 @@ module.exports = {
   registrarClickPromocion,
   cleanCosmosDocument,
   getCosmosContainer,
+  // Funciones de usuarios
+  findUsuarioByMatricula,
+  findUsuarioByCorreo,
+  createUsuario,
   // Exportar clientes para uso directo si es necesario
   getCosmosClient: () => cosmosClient,
   getDatabase: () => database,
   getCarnetsContainer: () => carnetsContainer,
   getCitasContainer: () => citasContainer,
-  getPromocionesContainer: () => promocionesContainer
+  getPromocionesContainer: () => promocionesContainer,
+  getUsuariosContainer: () => usuariosContainer
 };
