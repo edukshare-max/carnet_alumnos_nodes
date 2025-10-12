@@ -18,7 +18,7 @@ async function connectToCosmosDB() {
     const carnetsContainerName = process.env.COSMOS_CONTAINER_CARNETS || 'carnets_id';
     const citasContainerName = process.env.COSMOS_CONTAINER_CITAS || 'cita_id';
     const promocionesContainerName = process.env.COSMOS_CONTAINER_PROMOCIONES || 'promociones_salud';
-    const usuariosContainerName = process.env.COSMOS_CONTAINER_USUARIOS || 'usuarios';
+    const usuariosContainerName = process.env.COSMOS_CONTAINER_USUARIOS || 'usuarios_matricula';
 
     if (!endpoint || !key) {
       throw new Error('COSMOS_ENDPOINT y COSMOS_KEY son requeridos en variables de entorno');
