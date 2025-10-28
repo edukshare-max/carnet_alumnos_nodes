@@ -162,32 +162,39 @@ async function findCitasByMatricula(matricula) {
  * - Son para la matrícula específica (matricula = "15662" por ejemplo) → NO requieren autorización
  * - Son para todos los alumnos (matricula vacía) → REQUIEREN autorización
  * - Son generales (destinatario = "general") → REQUIEREN autorización
+ * - Solo muestra promociones de los últimos 7 días
  * @param {string} matricula - Matrícula del usuario
  * @returns {Array} - Array de promociones aplicables al usuario
  */
 async function findPromocionesByMatricula(matricula) {
   try {
+    // Calcular fecha de hace 7 días
+    const fechaLimite = new Date();
+    fechaLimite.setDate(fechaLimite.getDate() - 7);
+    const fechaLimiteISO = fechaLimite.toISOString();
+    
     const querySpec = {
       query: `
         SELECT * FROM c 
-        WHERE (
-          c.destinatario = "general" AND c.autorizado = true
-        ) OR (
-          c.destinatario = "alumno" AND c.matricula = @matricula
-        ) OR (
-          c.destinatario = "alumno" AND c.autorizado = true AND (NOT IS_DEFINED(c.matricula) OR c.matricula = "" OR c.matricula = null)
+        WHERE c.createdAt >= @fechaLimite
+        AND (
+          (c.destinatario = "general" AND c.autorizado = true)
+          OR (c.destinatario = "alumno" AND c.matricula = @matricula)
+          OR (c.destinatario = "alumno" AND c.autorizado = true AND (NOT IS_DEFINED(c.matricula) OR c.matricula = "" OR c.matricula = null))
         )
         ORDER BY c.createdAt DESC
       `,
       parameters: [
-        { name: '@matricula', value: matricula }
+        { name: '@matricula', value: matricula },
+        { name: '@fechaLimite', value: fechaLimiteISO }
       ]
     };
 
     const { resources } = await promocionesContainer.items.query(querySpec).fetchAll();
     
     console.log(`🔍 Query ejecutada para matrícula: ${matricula}`);
-    console.log(`📊 Promociones encontradas: ${resources.length}`);
+    console.log(`� Fecha límite (7 días): ${fechaLimiteISO}`);
+    console.log(`�📊 Promociones encontradas (últimos 7 días): ${resources.length}`);
     
     return resources;
   } catch (error) {
