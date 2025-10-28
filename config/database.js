@@ -6,6 +6,7 @@ let carnetsContainer;
 let citasContainer;
 let promocionesContainer;
 let usuariosContainer;
+let notasContainer;
 
 /**
  * Inicializar conexión a Azure Cosmos DB
@@ -18,6 +19,7 @@ async function connectToCosmosDB() {
     const carnetsContainerName = process.env.COSMOS_CONTAINER_CARNETS || 'carnets_id';
     const citasContainerName = process.env.COSMOS_CONTAINER_CITAS || 'cita_id';
     const promocionesContainerName = process.env.COSMOS_CONTAINER_PROMOCIONES || 'promociones_salud';
+    const notasContainerName = process.env.COSMOS_CONTAINER_NOTAS || 'notas_medicas';
     // Forzar el nombre correcto del contenedor (ignorar variable de entorno)
     const usuariosContainerName = 'usuarios_matricula';
 
@@ -55,6 +57,7 @@ async function connectToCosmosDB() {
     carnetsContainer = database.container(carnetsContainerName);
     citasContainer = database.container(citasContainerName);
     promocionesContainer = database.container(promocionesContainerName);
+    notasContainer = database.container(notasContainerName);
     usuariosContainer = database.container(usuariosContainerName);
 
     // Verificar que los contenedores existen
@@ -156,8 +159,9 @@ async function findCitasByMatricula(matricula) {
 /**
  * Buscar promociones por matrícula
  * Retorna promociones que:
- * - Son para la matrícula específica (matricula = "15662" por ejemplo)
- * - O son para todos (matricula es null, undefined o no existe)
+ * - Son para la matrícula específica (matricula = "15662" por ejemplo) → NO requieren autorización
+ * - Son para todos los alumnos (matricula vacía) → REQUIEREN autorización
+ * - Son generales (destinatario = "general") → REQUIEREN autorización
  * @param {string} matricula - Matrícula del usuario
  * @returns {Array} - Array de promociones aplicables al usuario
  */
@@ -166,11 +170,12 @@ async function findPromocionesByMatricula(matricula) {
     const querySpec = {
       query: `
         SELECT * FROM c 
-        WHERE c.autorizado = true 
-        AND (
-          c.destinatario = "general"
-          OR (c.destinatario = "alumno" AND c.matricula = @matricula)
-          OR (c.destinatario = "alumno" AND (NOT IS_DEFINED(c.matricula) OR c.matricula = "" OR c.matricula = null))
+        WHERE (
+          c.destinatario = "general" AND c.autorizado = true
+        ) OR (
+          c.destinatario = "alumno" AND c.matricula = @matricula
+        ) OR (
+          c.destinatario = "alumno" AND c.autorizado = true AND (NOT IS_DEFINED(c.matricula) OR c.matricula = "" OR c.matricula = null)
         )
         ORDER BY c.createdAt DESC
       `,
@@ -323,6 +328,32 @@ async function createUsuario(userData) {
   }
 }
 
+/**
+ * Buscar notas médicas por matrícula
+ * @param {string} matricula - Matrícula del usuario
+ * @returns {Array} - Array de notas médicas
+ */
+async function findNotasMedicasByMatricula(matricula) {
+  try {
+    const querySpec = {
+      query: 'SELECT * FROM c WHERE c.matricula = @matricula ORDER BY c.fecha DESC',
+      parameters: [
+        { name: '@matricula', value: matricula }
+      ]
+    };
+
+    const { resources } = await notasContainer.items
+      .query(querySpec)
+      .fetchAll();
+
+    console.log(`📋 Notas médicas encontradas para matrícula ${matricula}:`, resources.length);
+    return resources.map(cleanCosmosDocument);
+  } catch (error) {
+    console.error('Error buscando notas médicas:', error);
+    throw error;
+  }
+}
+
 module.exports = {
   connectToCosmosDB,
   findCarnetByEmailAndMatricula,
@@ -336,6 +367,8 @@ module.exports = {
   findUsuarioByMatricula,
   findUsuarioByCorreo,
   createUsuario,
+  // Funciones de notas médicas
+  findNotasMedicasByMatricula,
   // Exportar clientes para uso directo si es necesario
   getCosmosClient: () => cosmosClient,
   getDatabase: () => database,

@@ -9,6 +9,7 @@ const carnetRoutes = require('./routes/carnet');
 const citasRoutes = require('./routes/citas');
 const promocionesRoutes = require('./routes/promociones');
 const vacunasRoutes = require('./routes/vacunas');
+const consultasRoutes = require('./routes/consultas');
 const { connectToCosmosDB } = require('./config/database');
 
 const app = express();
@@ -19,7 +20,9 @@ const corsOptions = {
   origin: (origin, callback) => {
     const allowedOrigins = process.env.CORS_ORIGINS?.split(',') || [
       'http://localhost:3000',
-      'https://carnet-alumnos-nodes.onrender.com'
+      'http://localhost:8080',
+      'https://carnet-alumnos-nodes.onrender.com',
+      'https://app.carnetdigital.space'
     ];
     
     // Permitir requests sin origin (aplicaciones móviles, Postman, etc.)
@@ -84,6 +87,7 @@ app.use('/me', carnetRoutes);
 app.use('/me', citasRoutes);
 app.use('/me', promocionesRoutes);  // Montado en /me para coincidir con Flutter app
 app.use('/me', vacunasRoutes);  // Ruta de vacunación
+app.use('/', consultasRoutes);  // Ruta de consultas médicas
 
 // Manejo de rutas no encontradas
 app.use('*', (req, res) => {
