@@ -342,10 +342,15 @@ async function createUsuario(userData) {
  */
 async function findNotasMedicasByMatricula(matricula) {
   try {
+    // Convertir matrícula a string para coincidir con el tipo en Cosmos DB
+    const matriculaStr = String(matricula);
+    
+    console.log(`🔍 [DB] Buscando notas para matrícula: "${matriculaStr}" (tipo: ${typeof matriculaStr})`);
+    
     const querySpec = {
       query: 'SELECT * FROM c WHERE c.matricula = @matricula',
       parameters: [
-        { name: '@matricula', value: matricula }
+        { name: '@matricula', value: matriculaStr }
       ]
     };
 
@@ -353,7 +358,10 @@ async function findNotasMedicasByMatricula(matricula) {
       .query(querySpec)
       .fetchAll();
 
-    console.log(`📋 Notas médicas encontradas para matrícula ${matricula}:`, resources.length);
+    console.log(`📋 Notas médicas encontradas para matrícula ${matriculaStr}:`, resources.length);
+    if (resources.length > 0) {
+      console.log(`📄 [DB] Primera nota encontrada:`, JSON.stringify(resources[0], null, 2));
+    }
     
     // Ordenar en memoria por fecha (más flexible que ORDER BY en query)
     // Busca múltiples campos de fecha posibles
