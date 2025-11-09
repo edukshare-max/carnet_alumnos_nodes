@@ -32,35 +32,35 @@ router.get('/citas', authenticateToken, async (req, res) => {
         {
           id: "cita_001",
           matricula: matricula,
-          fechaCita: "2024-11-15",
-          horaCita: "09:00",
-          tipoConsulta: "Consulta General",
-          medico: "Dr. García López",
+          inicio: "2024-11-15T09:00:00.000Z",
+          fin: "2024-11-15T10:00:00.000Z",
+          motivo: "Consulta General",
           departamento: "Medicina General", 
           estado: "programada",
-          observaciones: "Revisión general de salud"
+          createdAt: "2024-11-01T08:00:00.000Z",
+          updatedAt: "2024-11-01T08:00:00.000Z"
         },
         {
           id: "cita_002",
           matricula: matricula,
-          fechaCita: "2024-11-20", 
-          horaCita: "14:30",
-          tipoConsulta: "Psicología",
-          medico: "Psic. Ana Martínez",
+          inicio: "2024-11-20T14:30:00.000Z",
+          fin: "2024-11-20T15:30:00.000Z",
+          motivo: "Psicología",
           departamento: "Psicología",
           estado: "programada",
-          observaciones: "Sesión de seguimiento"
+          createdAt: "2024-11-05T10:00:00.000Z",
+          updatedAt: "2024-11-05T10:00:00.000Z"
         },
         {
           id: "cita_003",
           matricula: matricula,
-          fechaCita: "2024-10-25",
-          horaCita: "11:15", 
-          tipoConsulta: "Odontología",
-          medico: "Dr. Rodríguez Pérez",
+          inicio: "2024-10-25T11:15:00.000Z",
+          fin: "2024-10-25T12:00:00.000Z",
+          motivo: "Odontología",
           departamento: "Odontología",
           estado: "completada",
-          observaciones: "Limpieza dental realizada"
+          createdAt: "2024-10-20T09:00:00.000Z",
+          updatedAt: "2024-10-25T12:00:00.000Z"
         }
       ];
     }
