@@ -15,28 +15,41 @@ router.get('/consultas', authenticateToken, async (req, res) => {
   try {
     const matricula = req.user.matricula;
     
-    console.log(`🔍 Consultando notas médicas para matrícula: ${matricula}`);
+    console.log(`🔍 [CONSULTAS] Iniciando consulta para matrícula: ${matricula}`);
     
     // Obtener información del carnet para el nombre completo
-    let carnet;
     let nombreCompleto = 'Alumno';
     
     try {
-      carnet = await findCarnetByMatricula(matricula);
+      console.log('📝 [CONSULTAS] Intentando obtener carnet...');
+      const carnet = await findCarnetByMatricula(matricula);
       nombreCompleto = carnet?.nombreCompleto || 'Alumno';
+      console.log(`✅ [CONSULTAS] Carnet obtenido: ${nombreCompleto}`);
     } catch (err) {
-      console.log('⚠️ Error obteniendo carnet, usando nombre genérico:', err.message);
+      console.log('⚠️ [CONSULTAS] Error obteniendo carnet, usando nombre genérico:', err.message);
     }
     
     // Obtener notas médicas
-    const notas = await findNotasMedicasByMatricula(matricula);
+    console.log('📋 [CONSULTAS] Consultando notas médicas en BD...');
+    let notas = [];
+    try {
+      notas = await findNotasMedicasByMatricula(matricula);
+      console.log(`✅ [CONSULTAS] Notas obtenidas de DB: ${notas.length}`);
+    } catch (err) {
+      console.error('❌ [CONSULTAS] Error obteniendo notas:', err);
+      // Continuar con array vacío
+      notas = [];
+    }
     
-    console.log(`📋 Notas obtenidas de DB: ${notas.length}`);
+    
     if (notas.length > 0) {
-      console.log('📄 Primera nota:', JSON.stringify(notas[0], null, 2));
+      console.log('📄 [CONSULTAS] Primera nota:', JSON.stringify(notas[0], null, 2));
+    } else {
+      console.log('📭 [CONSULTAS] No se encontraron notas médicas');
     }
     
     // Transformar notas a formato de consulta
+    console.log('🔄 [CONSULTAS] Transformando notas a formato de consulta...');
     const consultas = notas.map(nota => {
       // Extraer diagnóstico del campo cuerpo si existe
       let diagnostico = 'Consulta médica';
@@ -59,11 +72,11 @@ router.get('/consultas', authenticateToken, async (req, res) => {
         tipo: nota.tipo || 'Consulta general'
       };
       
-      console.log('🔄 Consulta mapeada:', JSON.stringify(consulta, null, 2));
+      console.log('🔄 [CONSULTAS] Consulta mapeada:', JSON.stringify(consulta, null, 2));
       return consulta;
     });
     
-    console.log(`✅ ${consultas.length} consultas transformadas y listas para enviar`);
+    console.log(`✅ [CONSULTAS] ${consultas.length} consultas transformadas y listas para enviar`);
     
     res.json({
       success: true,
@@ -72,11 +85,13 @@ router.get('/consultas', authenticateToken, async (req, res) => {
     });
     
   } catch (error) {
-    console.error('❌ Error obteniendo consultas:', error);
+    console.error('❌ [CONSULTAS] Error CRÍTICO:', error);
+    console.error('❌ [CONSULTAS] Stack trace:', error.stack);
     res.status(500).json({
       success: false,
       error: 'SERVER_ERROR',
-      message: 'Error interno del servidor'
+      message: 'Error interno del servidor',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
