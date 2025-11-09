@@ -19,7 +19,7 @@ async function connectToCosmosDB() {
     const carnetsContainerName = process.env.COSMOS_CONTAINER_CARNETS || 'carnets_id';
     const citasContainerName = process.env.COSMOS_CONTAINER_CITAS || 'cita_id';
     const promocionesContainerName = process.env.COSMOS_CONTAINER_PROMOCIONES || 'promociones_salud';
-    const notasContainerName = process.env.COSMOS_CONTAINER_NOTAS || 'notas_medicas';
+    const notasContainerName = process.env.COSMOS_CONTAINER_NOTAS || 'notas';
     // Forzar el nombre correcto del contenedor (ignorar variable de entorno)
     const usuariosContainerName = 'usuarios_matricula';
 
