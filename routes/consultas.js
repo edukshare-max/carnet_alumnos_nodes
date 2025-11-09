@@ -51,6 +51,9 @@ router.get('/consultas', authenticateToken, async (req, res) => {
     // Transformar notas a formato de consulta
     console.log('🔄 [CONSULTAS] Transformando notas a formato de consulta...');
     const consultas = notas.map(nota => {
+      // Log de la nota completa para debug
+      console.log('📄 [CONSULTAS] NOTA COMPLETA:', JSON.stringify(nota, null, 2));
+      
       // Extraer diagnóstico del campo cuerpo si existe
       let diagnostico = 'Consulta médica';
       if (nota.cuerpo) {
