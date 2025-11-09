@@ -32,17 +32,28 @@ router.get('/consultas', authenticateToken, async (req, res) => {
     const notas = await findNotasMedicasByMatricula(matricula);
     
     // Transformar notas a formato de consulta
-    const consultas = notas.map(nota => ({
-      id: nota.id,
-      matricula: nota.matricula,
-      nombreCompleto: carnet.nombreCompleto,
-      fecha: nota.fecha || nota.fechaConsulta || nota.createdAt,
-      diagnostico: nota.diagnostico || nota.nota || nota.motivo || 'Consulta médica',
-      medico: nota.medico || nota.doctor || 'Servicio Médico UAGro',
-      departamento: nota.departamento || nota.servicio || 'Consultorio Médico',
-      observaciones: nota.observaciones || nota.tratamiento || '',
-      tipo: nota.tipo || 'Consulta general'
-    }));
+    const consultas = notas.map(nota => {
+      // Extraer diagnóstico del campo cuerpo si existe
+      let diagnostico = 'Consulta médica';
+      if (nota.cuerpo) {
+        const match = nota.cuerpo.match(/Diagnóstico:\s*([^\n]+)/i);
+        if (match) {
+          diagnostico = match[1].trim();
+        }
+      }
+      
+      return {
+        id: nota.id,
+        matricula: nota.matricula,
+        nombreCompleto: carnet.nombreCompleto,
+        fecha: nota.fecha || nota.fechaConsulta || nota.createdAt,
+        diagnostico: diagnostico,
+        medico: nota.tratante || nota.medico || nota.doctor || 'Servicio Médico UAGro',
+        departamento: nota.departamento || nota.servicio || 'Consultorio Médico',
+        observaciones: nota.cuerpo || nota.observaciones || nota.tratamiento || '',
+        tipo: nota.tipo || 'Consulta general'
+      };
+    });
     
     console.log(`✅ ${consultas.length} consultas encontradas`);
     
