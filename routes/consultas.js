@@ -18,14 +18,14 @@ router.get('/consultas', authenticateToken, async (req, res) => {
     console.log(`🔍 Consultando notas médicas para matrícula: ${matricula}`);
     
     // Obtener información del carnet para el nombre completo
-    const carnet = await findCarnetByMatricula(matricula);
+    let carnet;
+    let nombreCompleto = 'Alumno';
     
-    if (!carnet) {
-      return res.status(404).json({
-        success: false,
-        error: 'CARNET_NOT_FOUND',
-        message: 'No se encontró información del alumno'
-      });
+    try {
+      carnet = await findCarnetByMatricula(matricula);
+      nombreCompleto = carnet?.nombreCompleto || 'Alumno';
+    } catch (err) {
+      console.log('⚠️ Error obteniendo carnet, usando nombre genérico:', err.message);
     }
     
     // Obtener notas médicas
@@ -50,7 +50,7 @@ router.get('/consultas', authenticateToken, async (req, res) => {
       const consulta = {
         id: nota.id,
         matricula: nota.matricula,
-        nombreCompleto: carnet.nombreCompleto,
+        nombreCompleto: nombreCompleto,
         fecha: nota.fecha || nota.fechaConsulta || nota.createdAt,
         diagnostico: diagnostico,
         medico: nota.tratante || nota.medico || nota.doctor || 'Servicio Médico UAGro',
