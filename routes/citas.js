@@ -152,13 +152,20 @@ router.delete('/citas/pasadas', authenticateToken, async (req, res) => {
       });
     }
 
-    // Buscar citas del usuario
-    const citas = await findCitasByMatricula(matricula);
+    // Buscar citas en Cosmos DB (sin usar mock)
+    let citas = [];
+    try {
+      citas = await findCitasByMatricula(matricula);
+    } catch (dbError) {
+      console.log(`⚠️ [DELETE] Error de BD: ${dbError.message}`);
+    }
+    
+    console.log(`🔍 [DELETE] Total citas en BD: ${citas.length}`);
     
     if (citas.length === 0) {
       return res.json({
         success: true,
-        message: 'No hay citas para limpiar',
+        message: 'No hay citas reales para eliminar (solo datos de prueba)',
         eliminadas: 0
       });
     }
@@ -169,13 +176,23 @@ router.delete('/citas/pasadas', authenticateToken, async (req, res) => {
     
     const citasPasadas = citas.filter(cita => {
       try {
-        const fechaCita = new Date(cita.fechaCita);
+        // Soportar tanto 'inicio' (nuevo formato) como 'fechaCita' (legacy)
+        const fechaStr = cita.inicio || cita.fechaCita;
+        if (!fechaStr) return false;
+        
+        const fechaCita = new Date(fechaStr);
         return fechaCita < fechaActual;
       } catch {
         return false;
       }
     });
 
+    console.log(`🗓️ [DELETE] Citas pasadas encontradas: ${citasPasadas.length}`);
+    citasPasadas.forEach(cita => {
+      const fechaStr = cita.inicio || cita.fechaCita;
+      console.log(`   - ${cita.id}: ${fechaStr}`);
+    });
+    
     if (citasPasadas.length === 0) {
       return res.json({
         success: true,
