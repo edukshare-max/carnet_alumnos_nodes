@@ -137,4 +137,83 @@ router.get('/citas/:id', authenticateToken, async (req, res) => {
   }
 });
 
+/**
+ * DELETE /me/citas/pasadas
+ * Eliminar todas las citas pasadas del usuario
+ */
+router.delete('/citas/pasadas', authenticateToken, async (req, res) => {
+  try {
+    const { matricula } = req.user;
+
+    if (!matricula) {
+      return res.status(400).json({
+        success: false,
+        message: 'Matrícula no encontrada en token'
+      });
+    }
+
+    // Buscar citas del usuario
+    const citas = await findCitasByMatricula(matricula);
+    
+    if (citas.length === 0) {
+      return res.json({
+        success: true,
+        message: 'No hay citas para limpiar',
+        eliminadas: 0
+      });
+    }
+
+    // Filtrar citas pasadas
+    const fechaActual = new Date();
+    fechaActual.setHours(0, 0, 0, 0); // Inicio del día actual
+    
+    const citasPasadas = citas.filter(cita => {
+      try {
+        const fechaCita = new Date(cita.fechaCita);
+        return fechaCita < fechaActual;
+      } catch {
+        return false;
+      }
+    });
+
+    if (citasPasadas.length === 0) {
+      return res.json({
+        success: true,
+        message: 'No hay citas pasadas para eliminar',
+        eliminadas: 0
+      });
+    }
+
+    // Importar función de eliminación
+    const { deleteCitaById } = require('../config/database');
+    
+    // Eliminar cada cita pasada
+    let eliminadas = 0;
+    for (const cita of citasPasadas) {
+      try {
+        await deleteCitaById(cita.id, matricula);
+        eliminadas++;
+        console.log(`🗑️ Cita eliminada: ${cita.id} (${cita.fechaCita})`);
+      } catch (error) {
+        console.error(`❌ Error eliminando cita ${cita.id}:`, error);
+      }
+    }
+
+    console.log(`✅ ${eliminadas} citas pasadas eliminadas para matrícula: ${matricula}`);
+
+    res.json({
+      success: true,
+      message: `Se eliminaron ${eliminadas} cita(s) pasada(s)`,
+      eliminadas: eliminadas
+    });
+
+  } catch (error) {
+    console.error('❌ Error eliminando citas pasadas:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor'
+    });
+  }
+});
+
 module.exports = router;

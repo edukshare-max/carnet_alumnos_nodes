@@ -361,11 +361,34 @@ async function findNotasMedicasByMatricula(matricula) {
   }
 }
 
+/**
+ * Eliminar una cita por ID
+ * @param {string} citaId - ID de la cita
+ * @param {string} matricula - Matrícula del usuario (para partition key)
+ * @returns {Promise<boolean>} - true si se eliminó correctamente
+ */
+async function deleteCitaById(citaId, matricula) {
+  try {
+    // En Cosmos DB, el partition key es necesario para eliminar
+    await citasContainer.item(citaId, matricula).delete();
+    console.log(`✅ Cita ${citaId} eliminada correctamente`);
+    return true;
+  } catch (error) {
+    if (error.code === 404) {
+      console.log(`⚠️ Cita ${citaId} no encontrada (ya eliminada)`);
+      return true; // Consideramos éxito si ya no existe
+    }
+    console.error(`❌ Error eliminando cita ${citaId}:`, error);
+    throw error;
+  }
+}
+
 module.exports = {
   connectToCosmosDB,
   findCarnetByEmailAndMatricula,
   findCarnetByMatricula,
   findCitasByMatricula,
+  deleteCitaById,
   findPromocionesByMatricula,
   registrarClickPromocion,
   cleanCosmosDocument,
