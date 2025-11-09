@@ -343,7 +343,7 @@ async function createUsuario(userData) {
 async function findNotasMedicasByMatricula(matricula) {
   try {
     const querySpec = {
-      query: 'SELECT * FROM c WHERE c.matricula = @matricula ORDER BY c.fecha DESC',
+      query: 'SELECT * FROM c WHERE c.matricula = @matricula',
       parameters: [
         { name: '@matricula', value: matricula }
       ]
@@ -354,7 +354,22 @@ async function findNotasMedicasByMatricula(matricula) {
       .fetchAll();
 
     console.log(`📋 Notas médicas encontradas para matrícula ${matricula}:`, resources.length);
-    return resources.map(cleanCosmosDocument);
+    
+    // Ordenar en memoria por fecha (más flexible que ORDER BY en query)
+    // Busca múltiples campos de fecha posibles
+    const sortedResources = resources.sort((a, b) => {
+      const getFecha = (nota) => {
+        const fechaStr = nota.fecha || nota.fechaConsulta || nota.createdAt || nota._ts;
+        try {
+          return new Date(fechaStr).getTime();
+        } catch {
+          return 0;
+        }
+      };
+      return getFecha(b) - getFecha(a); // DESC (más reciente primero)
+    });
+    
+    return sortedResources.map(cleanCosmosDocument);
   } catch (error) {
     console.error('Error buscando notas médicas:', error);
     throw error;
