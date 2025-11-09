@@ -31,6 +31,11 @@ router.get('/consultas', authenticateToken, async (req, res) => {
     // Obtener notas médicas
     const notas = await findNotasMedicasByMatricula(matricula);
     
+    console.log(`📋 Notas obtenidas de DB: ${notas.length}`);
+    if (notas.length > 0) {
+      console.log('📄 Primera nota:', JSON.stringify(notas[0], null, 2));
+    }
+    
     // Transformar notas a formato de consulta
     const consultas = notas.map(nota => {
       // Extraer diagnóstico del campo cuerpo si existe
@@ -42,7 +47,7 @@ router.get('/consultas', authenticateToken, async (req, res) => {
         }
       }
       
-      return {
+      const consulta = {
         id: nota.id,
         matricula: nota.matricula,
         nombreCompleto: carnet.nombreCompleto,
@@ -53,9 +58,12 @@ router.get('/consultas', authenticateToken, async (req, res) => {
         observaciones: nota.cuerpo || nota.observaciones || nota.tratamiento || '',
         tipo: nota.tipo || 'Consulta general'
       };
+      
+      console.log('🔄 Consulta mapeada:', JSON.stringify(consulta, null, 2));
+      return consulta;
     });
     
-    console.log(`✅ ${consultas.length} consultas encontradas`);
+    console.log(`✅ ${consultas.length} consultas transformadas y listas para enviar`);
     
     res.json({
       success: true,
