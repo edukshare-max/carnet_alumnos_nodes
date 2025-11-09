@@ -11,7 +11,7 @@ const { findNotasMedicasByMatricula, findCarnetByMatricula } = require('../confi
  * Obtener historial de consultas médicas del usuario autenticado
  * Requiere autenticación JWT
  */
-router.get('/me/consultas', authenticateToken, async (req, res) => {
+router.get('/consultas', authenticateToken, async (req, res) => {
   try {
     const matricula = req.user.matricula;
     

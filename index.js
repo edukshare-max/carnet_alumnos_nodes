@@ -87,7 +87,7 @@ app.use('/me', carnetRoutes);
 app.use('/me', citasRoutes);
 app.use('/me', promocionesRoutes);  // Montado en /me para coincidir con Flutter app
 app.use('/me', vacunasRoutes);  // Ruta de vacunación
-app.use('/', consultasRoutes);  // Ruta de consultas médicas
+app.use('/me', consultasRoutes);  // Ruta de consultas de atención
 
 // Manejo de rutas no encontradas
 app.use('*', (req, res) => {
