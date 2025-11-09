@@ -15,7 +15,7 @@ router.get('/consultas', authenticateToken, async (req, res) => {
   try {
     const matricula = req.user.matricula;
     
-    console.log(`🔍 [CONSULTAS] Iniciando consulta para matrícula: ${matricula}`);
+    console.log(`🔍 [CONSULTAS] Iniciando consulta para matrícula: ${matricula} (tipo original: ${typeof matricula})`);
     
     // Obtener información del carnet para el nombre completo
     let nombreCompleto = 'Alumno';
