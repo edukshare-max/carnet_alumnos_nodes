@@ -41,42 +41,48 @@ router.get('/alebrije', authenticateToken, async (req, res) => {
 /**
  * POST /me/alebrije
  * Crear un nuevo alebrije para el estudiante
+ * Acepta objeto completo del alebrije generado en el frontend
  */
 router.post('/alebrije', authenticateToken, async (req, res) => {
   try {
     const matricula = req.user.matricula;
-    const { especieBase, nombre } = req.body;
+    const alebrijeData = req.body;
 
-    console.log(`🎨 [ALEBRIJE] Creando alebrije para matrícula: ${matricula}, especie: ${especieBase}`);
-
-    // Validar especie
-    const especiesValidas = ['jaguar', 'aguila', 'serpiente', 'venado', 'colibri'];
-    if (!especieBase || !especiesValidas.includes(especieBase)) {
-      return res.status(400).json({
-        error: 'Especie inválida',
-        especiesValidas
-      });
-    }
+    console.log(`🎨 [ALEBRIJE] Guardando alebrije para matrícula: ${matricula}`);
+    console.log(`   - Nombre: ${alebrijeData.nombre}`);
+    console.log(`   - Especie: ${alebrijeData.dna?.especieBase || 'desconocida'}`);
 
     // Verificar si ya existe un alebrije
     const alebrijeExistente = await findAlebrijeByMatricula(matricula);
     if (alebrijeExistente) {
-      return res.status(409).json({
-        error: 'Alebrije ya existe',
-        mensaje: 'El estudiante ya tiene un alebrije guardián',
-        alebrije: alebrijeExistente
+      console.log(`⚠️ [ALEBRIJE] Ya existe, actualizando en su lugar...`);
+      // Si ya existe, actualizar en lugar de crear
+      const alebrijeActualizado = await updateAlebrije(matricula, {
+        ...alebrijeData,
+        matricula, // Asegurar que la matrícula sea correcta
       });
+      return res.status(200).json(alebrijeActualizado);
     }
 
-    // Crear alebrije (el backend genera el DNA)
-    const nuevoAlebrije = await createAlebrije(matricula, especieBase, nombre);
+    // Guardar el alebrije completo tal como viene del frontend
+    const alebrijeParaGuardar = {
+      ...alebrijeData,
+      matricula, // Asegurar que la matrícula del token se use
+      createdAt: alebrijeData.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
 
-    console.log(`✅ [ALEBRIJE] Alebrije creado exitosamente: ${nuevoAlebrije.id}`);
-    res.status(201).json(nuevoAlebrije);
+    const { resource } = await require('../config/database').alebrijesContainer.items.create(alebrijeParaGuardar);
+
+    console.log(`✅ [ALEBRIJE] Alebrije guardado exitosamente en Cosmos DB`);
+    console.log(`   - ID: ${resource.id}`);
+    console.log(`   - Matrícula: ${resource.matricula}`);
+    
+    res.status(201).json(require('../config/database').cleanCosmosDocument(resource));
   } catch (error) {
-    console.error('❌ [ALEBRIJE] Error al crear alebrije:', error);
+    console.error('❌ [ALEBRIJE] Error al guardar alebrije:', error);
     res.status(500).json({
-      error: 'Error al crear alebrije',
+      error: 'Error al guardar alebrije',
       detalles: error.message
     });
   }
@@ -84,21 +90,21 @@ router.post('/alebrije', authenticateToken, async (req, res) => {
 
 /**
  * PUT /me/alebrije
- * Actualizar el estado del alebrije
+ * Actualizar el estado del alebrije (acepta objeto completo)
  */
 router.put('/alebrije', authenticateToken, async (req, res) => {
   try {
     const matricula = req.user.matricula;
-    const { estado, puntosExperiencia, nivelEvolucion, dna, historialEvoluciones } = req.body;
+    const alebrijeData = req.body;
 
     console.log(`🔄 [ALEBRIJE] Actualizando alebrije para matrícula: ${matricula}`);
+    console.log(`   - Nombre: ${alebrijeData.nombre || 'sin cambios'}`);
+    console.log(`   - Nivel: ${alebrijeData.nivelEvolucion || 'desconocido'}`);
 
+    // Actualizar con todos los datos del alebrije
     const alebrijeActualizado = await updateAlebrije(matricula, {
-      estado,
-      puntosExperiencia,
-      nivelEvolucion,
-      dna,
-      historialEvoluciones,
+      ...alebrijeData,
+      matricula, // Asegurar que la matrícula sea correcta
       updatedAt: new Date().toISOString()
     });
 
@@ -108,7 +114,7 @@ router.put('/alebrije', authenticateToken, async (req, res) => {
       });
     }
 
-    console.log(`✅ [ALEBRIJE] Alebrije actualizado: ${alebrijeActualizado.id}`);
+    console.log(`✅ [ALEBRIJE] Alebrije actualizado exitosamente`);
     res.json(alebrijeActualizado);
   } catch (error) {
     console.error('❌ [ALEBRIJE] Error al actualizar alebrije:', error);
