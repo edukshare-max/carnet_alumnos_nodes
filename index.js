@@ -10,6 +10,7 @@ const citasRoutes = require('./routes/citas');
 const promocionesRoutes = require('./routes/promociones');
 const vacunasRoutes = require('./routes/vacunas');
 const consultasRoutes = require('./routes/consultas');
+const alebrijeRoutes = require('./routes/alebrije');
 const { connectToCosmosDB } = require('./config/database');
 
 const app = express();
@@ -88,6 +89,7 @@ app.use('/me', citasRoutes);
 app.use('/me', promocionesRoutes);  // Montado en /me para coincidir con Flutter app
 app.use('/me', vacunasRoutes);  // Ruta de vacunación
 app.use('/me', consultasRoutes);  // Ruta de consultas de atención
+app.use('/me', alebrijeRoutes);  // Ruta de alebrijes Tamagotchi
 
 // Manejo de rutas no encontradas
 app.use('*', (req, res) => {

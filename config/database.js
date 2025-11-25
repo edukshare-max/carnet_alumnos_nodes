@@ -7,6 +7,7 @@ let citasContainer;
 let promocionesContainer;
 let usuariosContainer;
 let notasContainer;
+let alebrijesContainer;
 
 /**
  * Inicializar conexión a Azure Cosmos DB
@@ -20,6 +21,7 @@ async function connectToCosmosDB() {
     const citasContainerName = process.env.COSMOS_CONTAINER_CITAS || 'cita_id';
     const promocionesContainerName = process.env.COSMOS_CONTAINER_PROMOCIONES || 'promociones_salud';
     const notasContainerName = process.env.COSMOS_CONTAINER_NOTAS || 'notas';
+    const alebrijesContainerName = process.env.COSMOS_CONTAINER_ALEBRIJES || 'alebrijes_estudiantes';
     // Forzar el nombre correcto del contenedor (ignorar variable de entorno)
     const usuariosContainerName = 'usuarios_matricula';
 
@@ -58,6 +60,7 @@ async function connectToCosmosDB() {
     citasContainer = database.container(citasContainerName);
     promocionesContainer = database.container(promocionesContainerName);
     notasContainer = database.container(notasContainerName);
+    alebrijesContainer = database.container(alebrijesContainerName);
     usuariosContainer = database.container(usuariosContainerName);
 
     // Verificar que los contenedores existen
@@ -406,6 +409,255 @@ async function deleteCitaById(citaId, matricula) {
   }
 }
 
+/**
+ * Buscar alebrije por matrícula
+ * @param {string} matricula - Matrícula del estudiante
+ * @returns {Object|null} - Alebrije o null si no existe
+ */
+async function findAlebrijeByMatricula(matricula) {
+  try {
+    const matriculaStr = String(matricula);
+    const querySpec = {
+      query: 'SELECT * FROM c WHERE c.matricula = @matricula',
+      parameters: [
+        { name: '@matricula', value: matriculaStr }
+      ]
+    };
+
+    const { resources } = await alebrijesContainer.items.query(querySpec).fetchAll();
+    return resources.length > 0 ? cleanCosmosDocument(resources[0]) : null;
+  } catch (error) {
+    console.error(`❌ Error buscando alebrije para matrícula ${matricula}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Crear un nuevo alebrije
+ * @param {string} matricula - Matrícula del estudiante
+ * @param {string} especieBase - Especie base (jaguar, aguila, etc.)
+ * @param {string} nombre - Nombre personalizado (opcional)
+ * @returns {Object} - Alebrije creado
+ */
+async function createAlebrije(matricula, especieBase, nombre = null) {
+  try {
+    const matriculaStr = String(matricula);
+    const timestamp = new Date().toISOString();
+    const id = `alebrije_${matriculaStr}_${Date.now()}`;
+
+    // Generar DNA aleatorio del alebrije
+    const dna = generarDNAAleatorio(especieBase);
+
+    const alebrije = {
+      id,
+      matricula: matriculaStr,
+      nombre: nombre || `Alebrije de ${especieBase}`,
+      dna,
+      estado: {
+        hambre: 100,
+        felicidad: 100,
+        salud: 100,
+        energia: 100,
+        ultimaAlimentacion: timestamp,
+        ultimaInteraccion: timestamp,
+        ultimoCuidado: timestamp,
+        diasConsecutivos: 1
+      },
+      historialEvoluciones: [
+        {
+          nivel: 1,
+          fecha: timestamp,
+          descripcion: 'Nacimiento del alebrije'
+        }
+      ],
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      nivelEvolucion: 1,
+      puntosExperiencia: 0
+    };
+
+    const { resource } = await alebrijesContainer.items.create(alebrije);
+    return cleanCosmosDocument(resource);
+  } catch (error) {
+    console.error(`❌ Error creando alebrije para matrícula ${matricula}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Actualizar alebrije
+ * @param {string} matricula - Matrícula del estudiante
+ * @param {Object} updates - Campos a actualizar
+ * @returns {Object} - Alebrije actualizado
+ */
+async function updateAlebrije(matricula, updates) {
+  try {
+    const alebrije = await findAlebrijeByMatricula(matricula);
+    if (!alebrije) return null;
+
+    const alebrijeActualizado = {
+      ...alebrije,
+      ...updates,
+      updatedAt: new Date().toISOString()
+    };
+
+    const { resource } = await alebrijesContainer.item(alebrije.id, alebrije.matricula).replace(alebrijeActualizado);
+    return cleanCosmosDocument(resource);
+  } catch (error) {
+    console.error(`❌ Error actualizando alebrije para matrícula ${matricula}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Registrar interacción con el alebrije
+ * @param {string} matricula - Matrícula del estudiante
+ * @param {string} tipo - Tipo de interacción (alimentar, jugar, curar, descansar)
+ * @param {number} cantidad - Cantidad de puntos/efecto
+ */
+async function recordInteraction(matricula, tipo, cantidad) {
+  try {
+    const alebrije = await findAlebrijeByMatricula(matricula);
+    if (!alebrije) throw new Error('Alebrije no encontrado');
+
+    const timestamp = new Date().toISOString();
+    let nuevoEstado = { ...alebrije.estado };
+
+    // Aplicar efectos de la interacción
+    switch (tipo) {
+      case 'alimentar':
+        nuevoEstado.hambre = Math.min(100, nuevoEstado.hambre + (cantidad || 20));
+        nuevoEstado.felicidad = Math.min(100, nuevoEstado.felicidad + Math.floor((cantidad || 20) * 0.3));
+        nuevoEstado.ultimaAlimentacion = timestamp;
+        break;
+      case 'jugar':
+        nuevoEstado.hambre = Math.max(0, nuevoEstado.hambre - 10);
+        nuevoEstado.felicidad = Math.min(100, nuevoEstado.felicidad + 20);
+        nuevoEstado.salud = Math.min(100, nuevoEstado.salud + 5);
+        nuevoEstado.energia = Math.max(0, nuevoEstado.energia - 15);
+        break;
+      case 'curar':
+        nuevoEstado.salud = Math.min(100, nuevoEstado.salud + (cantidad || 30));
+        nuevoEstado.felicidad = Math.min(100, nuevoEstado.felicidad + Math.floor((cantidad || 30) * 0.2));
+        nuevoEstado.energia = Math.min(100, nuevoEstado.energia + Math.floor((cantidad || 30) * 0.5));
+        nuevoEstado.ultimoCuidado = timestamp;
+        break;
+      case 'descansar':
+        nuevoEstado.hambre = Math.max(0, nuevoEstado.hambre - 5);
+        nuevoEstado.felicidad = Math.min(100, nuevoEstado.felicidad + 10);
+        nuevoEstado.salud = Math.min(100, nuevoEstado.salud + 5);
+        nuevoEstado.energia = 100;
+        break;
+    }
+
+    nuevoEstado.ultimaInteraccion = timestamp;
+
+    await updateAlebrije(matricula, { estado: nuevoEstado });
+    console.log(`✅ Interacción ${tipo} registrada para alebrije de matrícula ${matricula}`);
+  } catch (error) {
+    console.error(`❌ Error registrando interacción para matrícula ${matricula}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Generar DNA aleatorio para un alebrije
+ * @param {string} especieBase - Especie base
+ * @returns {Object} - DNA del alebrije
+ */
+function generarDNAAleatorio(especieBase) {
+  const seed = Math.floor(Math.random() * 1000000);
+  
+  // Colores mexicanos vibrantes
+  const coloresMexicanos = [
+    '#FF6B35', '#F7931E', '#C1272D', '#8B1538',
+    '#1565C0', '#00A8E8', '#7209B7', '#F72585',
+    '#06FFA5', '#FFD700'
+  ];
+  
+  const coloresShuffled = [...coloresMexicanos].sort(() => Math.random() - 0.5);
+  
+  const patronesDisponibles = ['espirales', 'ondas', 'zigzag', 'puntos', 'rayas', 'grecas', 'flores', 'estrellas'];
+  const numPatrones = 2 + Math.floor(Math.random() * 3);
+  const patronesSeleccionados = patronesDisponibles.sort(() => Math.random() - 0.5).slice(0, numPatrones);
+
+  return {
+    especieBase,
+    genCabeza: generarGenCabeza(especieBase),
+    genCuerpo: generarGenCuerpo(especieBase),
+    genExtremidades: generarGenExtremidades(especieBase),
+    genCola: generarGenCola(especieBase),
+    genAlas: generarGenAlas(especieBase),
+    colores: {
+      colorPrimario: coloresShuffled[0],
+      colorSecundario: coloresShuffled[1],
+      colorTerciario: coloresShuffled[2],
+      colorAcento: coloresShuffled[3],
+      brillantez: 0.6 + Math.random() * 0.4
+    },
+    patronesGeometricos: patronesSeleccionados
+  };
+}
+
+function generarGenCabeza(especieBase) {
+  const formas = {
+    jaguar: ['felina', 'misteriosa'],
+    aguila: ['aviar', 'majestuosa'],
+    serpiente: ['reptil', 'alargada'],
+    venado: ['cervido', 'elegante'],
+    colibri: ['pequena', 'delicada']
+  };
+  const formasEspecie = formas[especieBase] || ['felina', 'aviar', 'reptil'];
+  
+  return {
+    forma: formasEspecie[Math.floor(Math.random() * formasEspecie.length)],
+    orejas: ['puntiagudas', 'redondeadas', 'largas', 'ausentes'][Math.floor(Math.random() * 4)],
+    cuernos: ['ausentes', 'ramificados', 'espirales', 'pequenos'][Math.floor(Math.random() * 4)],
+    ojos: ['grandes', 'rasgados', 'brillantes', 'misteriosos'][Math.floor(Math.random() * 4)]
+  };
+}
+
+function generarGenCuerpo(especieBase) {
+  return {
+    tamano: ['pequeno', 'mediano', 'grande'][Math.floor(Math.random() * 3)],
+    textura: especieBase === 'serpiente' ? 'escamas' : especieBase === 'aguila' || especieBase === 'colibri' ? 'plumas' : 'pelo',
+    forma: ['compacto', 'alargado', 'robusto', 'esbelto'][Math.floor(Math.random() * 4)],
+    proporcion: 0.7 + Math.random() * 1.3
+  };
+}
+
+function generarGenExtremidades(especieBase) {
+  let numeroPatas = 4;
+  if (especieBase === 'serpiente') numeroPatas = 0;
+  if (especieBase === 'aguila' || especieBase === 'colibri') numeroPatas = 2;
+  
+  return {
+    numeroPatas,
+    tipo: ['garras', 'pezunas', 'dedos'][Math.floor(Math.random() * 3)],
+    tamano: ['pequenas', 'medianas', 'grandes', 'poderosas'][Math.floor(Math.random() * 4)]
+  };
+}
+
+function generarGenCola(especieBase) {
+  return {
+    tiene: especieBase !== 'colibri' || Math.random() > 0.5,
+    tipo: ['larga', 'corta', 'plumosa', 'escamosa', 'espiral'][Math.floor(Math.random() * 5)],
+    punta: ['normal', 'mechon', 'aguijon', 'plumas'][Math.floor(Math.random() * 4)]
+  };
+}
+
+function generarGenAlas(especieBase) {
+  let tiene = false;
+  if (especieBase === 'aguila' || especieBase === 'colibri') tiene = true;
+  else tiene = Math.random() < 0.4;
+  
+  return {
+    tiene,
+    tipo: ['plumas', 'membrana', 'energia', 'cristal'][Math.floor(Math.random() * 4)],
+    tamano: ['pequenas', 'medianas', 'grandes', 'majestuosas'][Math.floor(Math.random() * 4)]
+  };
+}
+
 module.exports = {
   connectToCosmosDB,
   findCarnetByEmailAndMatricula,
@@ -422,11 +674,17 @@ module.exports = {
   createUsuario,
   // Funciones de notas médicas
   findNotasMedicasByMatricula,
+  // Funciones de alebrijes
+  findAlebrijeByMatricula,
+  createAlebrije,
+  updateAlebrije,
+  recordInteraction,
   // Exportar clientes para uso directo si es necesario
   getCosmosClient: () => cosmosClient,
   getDatabase: () => database,
   getCarnetsContainer: () => carnetsContainer,
   getCitasContainer: () => citasContainer,
   getPromocionesContainer: () => promocionesContainer,
-  getUsuariosContainer: () => usuariosContainer
+  getUsuariosContainer: () => usuariosContainer,
+  getAlebrijesContainer: () => alebrijesContainer
 };
