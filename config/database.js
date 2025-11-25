@@ -72,6 +72,18 @@ async function connectToCosmosDB() {
     console.log(`📦 Contenedor citas: ${citasResponse.id}`);
     console.log(`📦 Contenedor promociones: ${promocionesResponse.id}`);
     
+    // Intentar conectar al contenedor de alebrijes
+    try {
+      const { container: alebrijesResponse } = await alebrijesContainer.read();
+      console.log(`📦 Contenedor alebrijes: ${alebrijesResponse.id}`);
+    } catch (error) {
+      if (error.code === 404) {
+        console.log(`⚠️ Contenedor alebrijes_estudiantes no existe. Se necesita crear manualmente en Azure Portal.`);
+      } else {
+        throw error;
+      }
+    }
+    
     // Intentar conectar al contenedor de usuarios (crear si no existe)
     try {
       const { container: usuariosResponse } = await usuariosContainer.read();

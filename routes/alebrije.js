@@ -72,13 +72,14 @@ router.post('/alebrije', authenticateToken, async (req, res) => {
       updatedAt: new Date().toISOString(),
     };
 
-    const { resource } = await require('../config/database').alebrijesContainer.items.create(alebrijeParaGuardar);
+    const { getAlebrijesContainer, cleanCosmosDocument } = require('../config/database');
+    const { resource } = await getAlebrijesContainer().items.create(alebrijeParaGuardar);
 
     console.log(`✅ [ALEBRIJE] Alebrije guardado exitosamente en Cosmos DB`);
     console.log(`   - ID: ${resource.id}`);
     console.log(`   - Matrícula: ${resource.matricula}`);
     
-    res.status(201).json(require('../config/database').cleanCosmosDocument(resource));
+    res.status(201).json(cleanCosmosDocument(resource));
   } catch (error) {
     console.error('❌ [ALEBRIJE] Error al guardar alebrije:', error);
     res.status(500).json({
