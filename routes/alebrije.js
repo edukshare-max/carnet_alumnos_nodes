@@ -199,4 +199,93 @@ router.post('/alebrije/experiencia', authenticateToken, async (req, res) => {
   }
 });
 
+/**
+ * POST /me/alebrije/capsula
+ * Registrar cápsula obtenida por el estudiante (consulta/vacuna)
+ */
+router.post('/alebrije/capsula', authenticateToken, async (req, res) => {
+  try {
+    const matricula = req.user.matricula;
+    const { capsula, servicioSalud } = req.body;
+
+    if (!capsula || !servicioSalud) {
+      return res.status(400).json({
+        error: 'Datos incompletos',
+        mensaje: 'Se requiere información de la cápsula y servicio de salud'
+      });
+    }
+
+    console.log(`💊 [CAPSULA] Registrando cápsula para ${matricula} (${servicioSalud}): ${capsula.nombre} [${capsula.rareza}]`);
+
+    // Registrar interacción de cápsula obtenida
+    await recordInteraction(matricula, 'capsula_obtenida', {
+      tipo: capsula.tipo,
+      rareza: capsula.rareza,
+      nombre: capsula.nombre,
+      emoji: capsula.emoji,
+      servicio: servicioSalud,
+      duracion: capsula.duracion ? capsula.duracion : 'permanente',
+      efectos: {
+        bonosSalud: capsula.bonosSalud || 0,
+        bonosHambre: capsula.bonosHambre || 0,
+        bonosFelicidad: capsula.bonosFelicidad || 0,
+        bonosEnergia: capsula.bonosEnergia || 0,
+        multiplicadorExperiencia: capsula.multiplicadorExperiencia || 1.0,
+      },
+      timestamp: new Date().toISOString()
+    });
+
+    res.json({
+      mensaje: '¡Cápsula obtenida!',
+      capsula: {
+        id: capsula.id,
+        nombre: capsula.nombre,
+        rareza: capsula.rareza,
+        emoji: capsula.emoji,
+        descripcion: capsula.descripcion
+      },
+      servicio: servicioSalud
+    });
+  } catch (error) {
+    console.error('❌ [CAPSULA] Error al registrar cápsula:', error);
+    res.status(500).json({
+      error: 'Error al registrar cápsula',
+      detalles: error.message
+    });
+  }
+});
+
+/**
+ * GET /me/alebrije/capsulas/historial
+ * Obtener historial de cápsulas obtenidas
+ */
+router.get('/alebrije/capsulas/historial', authenticateToken, async (req, res) => {
+  try {
+    const matricula = req.user.matricula;
+    console.log(`💊 [CAPSULA] Obteniendo historial de cápsulas para ${matricula}`);
+
+    const alebrije = await findAlebrijeByMatricula(matricula);
+    
+    if (!alebrije) {
+      return res.status(404).json({
+        error: 'Alebrije no encontrado'
+      });
+    }
+
+    // Las cápsulas se manejan en el frontend localStorage
+    // Este endpoint puede servir para estadísticas futuras
+    res.json({
+      mensaje: 'Historial de cápsulas',
+      matricula: matricula,
+      // El frontend maneja el estado de cápsulas
+    });
+  } catch (error) {
+    console.error('❌ [CAPSULA] Error al obtener historial:', error);
+    res.status(500).json({
+      error: 'Error al obtener historial de cápsulas',
+      detalles: error.message
+    });
+  }
+});
+
 module.exports = router;
